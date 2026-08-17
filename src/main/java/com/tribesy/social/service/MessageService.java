@@ -20,6 +20,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -62,29 +63,35 @@ public class MessageService {
             return Collections.emptyList();
         }
 
-        List<Long> chatIds = messageRepository.findDistinctChatIdsByUserId(currentUser.getId());
-        if (chatIds == null || chatIds.isEmpty()) {
+        List<Chat> chats = chatRepository.findAllByUserId(currentUser.getId());
+        if (chats.isEmpty()) {
             return Collections.emptyList();
         }
 
         List<ChatDto> result = new ArrayList<>();
-        for (Long chatId : chatIds) {
-            messageRepository.findFirstByChatIdOrderByCreatedAtDesc(chatId)
-                    .ifPresent(lastMessage -> {
-                        Long participantId = getRecipientIdForChat(chatId, currentUser.getId());
 
-                        User participant = userRepository.findById(participantId).orElse(currentUser);
+        for (Chat chat : chats) {
+            Long chatId = chat.getId();
 
-                        result.add(ChatDto.builder()
-                                .id(chatId)
-                                .lastMessage(lastMessage.getContent())
-                                .updatedAt(lastMessage.getCreatedAt() != null ? lastMessage.getCreatedAt().toString() : "")
-                                .participant(UserDto.builder()
-                                        .id(participant.getId())
-                                        .username(participant.getUsername())
-                                        .build())
-                                .build());
-                    });
+            Long participantId = getRecipientIdForChat(chatId, currentUser.getId());
+            User participant = userRepository.findById(participantId).orElse(currentUser);
+
+            Optional<Message> lastMessageOpt = messageRepository.findFirstByChatIdOrderByCreatedAtDesc(chatId);
+
+            String lastMessageText = lastMessageOpt.map(Message::getContent).orElse("");
+            String updatedAtText = lastMessageOpt
+                    .map(m -> m.getCreatedAt() != null ? m.getCreatedAt().toString() : "")
+                    .orElseGet(() -> chat.getCreatedAt() != null ? chat.getCreatedAt().toString() : "");
+
+            result.add(ChatDto.builder()
+                    .id(chatId)
+                    .lastMessage(lastMessageText)
+                    .updatedAt(updatedAtText)
+                    .participant(UserDto.builder()
+                            .id(participant.getId())
+                            .username(participant.getUsername())
+                            .build())
+                    .build());
         }
 
         return result;
