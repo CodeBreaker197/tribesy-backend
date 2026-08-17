@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.security.Principal;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -41,18 +42,34 @@ public class MessageService {
         User sender = userRepository.findByUsername(principal.getName())
                 .orElseThrow(() -> new RuntimeException("User not found: " + principal.getName()));
 
+        boolean isParticipant = chatParticipantRepository.findByChatId(chatMessage.getChatId()).stream()
+                .anyMatch(p -> p.getUserId().equals(sender.getId()));
+
+        if (!isParticipant) {
+            throw new SecurityException("У вас нет доступа для отправки сообщений в этот чат");
+        }
+
         Message message = Message.builder()
                 .chatId(chatMessage.getChatId())
                 .senderId(sender.getId())
                 .content(chatMessage.getContent())
                 .isRead(false)
+                .createdAt(LocalDateTime.now())
                 .build();
 
-        messageRepository.save(message);
+        Message savedMessage = messageRepository.save(message);
+
+        MessageDto outgoingDto = MessageDto.builder()
+                .id(savedMessage.getId())
+                .chatId(savedMessage.getChatId())
+                .senderUsername(sender.getUsername())
+                .content(savedMessage.getContent())
+                .timestamp(savedMessage.getCreatedAt().toString())
+                .build();
 
         messagingTemplate.convertAndSend(
                 "/topic/chat/" + chatMessage.getChatId(),
-                chatMessage
+                outgoingDto
         );
     }
 
@@ -112,21 +129,34 @@ public class MessageService {
                 .chatId(chat.getId())
                 .content(request.getContent())
                 .isRead(false)
+                .createdAt(LocalDateTime.now())
                 .build();
 
         Message saved = messageRepository.save(message);
 
         return MessageDto.builder()
                 .id(saved.getId())
+                .chatId(chat.getId())
                 .senderUsername(sender.getUsername())
                 .recipientUsername(recipient.getUsername())
                 .content(saved.getContent())
-                .timestamp(saved.getCreatedAt() != null ? saved.getCreatedAt().toString() : "")
+                .timestamp(saved.getCreatedAt().toString())
                 .build();
     }
 
     @Transactional(readOnly = true)
-    public List<Message> getChatHistory(Long chatId) {
+    public List<Message> getChatHistory(Long chatId, String username) {
+
+        User currentUser = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found: " + username));
+
+        boolean isParticipant = chatParticipantRepository.findByChatId(chatId).stream()
+                .anyMatch(p -> p.getUserId().equals(currentUser.getId()));
+
+        if (!isParticipant) {
+            throw new SecurityException("У вас нет доступа к истории этого чата");
+        }
+
         return messageRepository.findByChatIdOrderByCreatedAtAsc(chatId);
     }
 

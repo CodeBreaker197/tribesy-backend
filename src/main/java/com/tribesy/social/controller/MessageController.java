@@ -5,6 +5,7 @@ import com.tribesy.social.service.MessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 
 @RestController
@@ -15,7 +16,7 @@ public class MessageController {
     private final MessageService messageService;
 
     @GetMapping("/history/{chatId}")
-    public List<Message> getChatHistory(@PathVariable Long chatId) {
-        return messageService.getChatHistory(chatId);
+    public List<Message> getChatHistory(@PathVariable Long chatId, Principal principal) {
+        return messageService.getChatHistory(chatId, principal.getName());
     }
 }
