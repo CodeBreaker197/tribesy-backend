@@ -1,6 +1,9 @@
 package com.tribesy.social.controller;
 
 import com.tribesy.social.dto.AuthResponse; // 👈 Импортируем ваш готовый DTO
+import com.tribesy.social.dto.LoginRequest;
+import com.tribesy.social.dto.RegisterRequest;
+import com.tribesy.social.entity.Role;
 import com.tribesy.social.entity.User;
 import com.tribesy.social.repository.UserRepository;
 import com.tribesy.social.security.JwtService;
@@ -31,6 +34,9 @@ public class AuthController {
                 .username(request.username())
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
+                .avatarUrl(request.avatarUrl())
+                .bio(request.bio())
+                .role(request.role() != null ? request.role() : Role.USER)
                 .build();
 
         userRepository.save(user);
@@ -53,7 +59,4 @@ public class AuthController {
 
         return ResponseEntity.ok(new AuthResponse(jwtToken, user.getUsername()));
     }
-
-    public record RegisterRequest(String username, String email, String password) {}
-    public record LoginRequest(String username, String password) {}
 }

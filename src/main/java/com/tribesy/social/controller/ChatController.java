@@ -7,8 +7,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
+import java.security.Principal;
 import java.time.LocalDateTime;
 
 @Controller
@@ -16,21 +18,32 @@ import java.time.LocalDateTime;
 public class ChatController {
 
     private final MessageRepository messageRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @MessageMapping("/chat.sendMessage")
-    @SendTo("/topic/public")
-    public ChatMessage sendMessage(@Payload ChatMessage chatMessage) {
+    public void sendMessage(@Payload ChatMessage chatMessage, Principal principal) {
+        String sender = principal.getName();
+        chatMessage.setSender(sender);
+
         if (chatMessage.getType() == ChatMessage.MessageType.CHAT) {
             Message message = Message.builder()
-                    .sender(chatMessage.getSender())
-                    .recipient(chatMessage.getRecipient() != null ? chatMessage.getRecipient() : "ALL")
+                    .sender(sender)
+                    .recipient(chatMessage.getRecipient())
                     .content(chatMessage.getContent())
                     .createdAt(LocalDateTime.now())
                     .build();
 
             messageRepository.save(message);
-        }
 
-        return chatMessage;
+            if (chatMessage.getRecipient() != null && !chatMessage.getRecipient().equals("ALL")) {
+                messagingTemplate.convertAndSendToUser(
+                        chatMessage.getRecipient(),
+                        "/queue/messages",
+                        chatMessage
+                );
+            } else {
+                messagingTemplate.convertAndSend("/topic/public", chatMessage);
+            }
+        }
     }
 }

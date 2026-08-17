@@ -22,11 +22,6 @@ public class ApplicationConfig {
     @Bean
     public UserDetailsService userDetailsService() {
         return username -> userRepository.findByUsername(username)
-                .map(user -> org.springframework.security.core.userdetails.User.builder()
-                        .username(user.getUsername())
-                        .password(user.getPassword())
-                        .authorities(Collections.emptyList())
-                        .build())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }
 

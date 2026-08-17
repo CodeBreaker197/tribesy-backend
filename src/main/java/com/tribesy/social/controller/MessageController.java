@@ -5,6 +5,7 @@ import com.tribesy.social.repository.MessageRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 
 @RestController
@@ -15,9 +16,8 @@ public class MessageController {
     private final MessageRepository messageRepository;
 
     @GetMapping("/history")
-    public List<Message> getChatHistory(@RequestParam String user1, @RequestParam String user2) {
-        return messageRepository.findBySenderAndRecipientOrSenderAndRecipientOrderByCreatedAtAsc(
-                user1, user2, user2, user1
-        );
+    public List<Message> getChatHistory(@RequestParam String withUser, Principal principal) {
+        String currentUsername = principal.getName();
+        return messageRepository.findChatHistory(currentUsername, withUser);
     }
 }

@@ -11,10 +11,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
+import java.security.Principal;
 import java.util.List;
 
 @RestController
@@ -26,9 +26,11 @@ public class PostController {
     private final UserRepository userRepository;
 
     @PostMapping
-    public ResponseEntity<PostResponse> createPost(@RequestBody CreatePostRequest request) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String currentUsername = authentication.getName();
+    public ResponseEntity<PostResponse> createPost(
+            @Valid @RequestBody CreatePostRequest request,
+            Principal principal
+    ) {
+        String currentUsername = principal.getName();
 
         User author = userRepository.findByUsername(currentUsername)
                 .orElseThrow(() -> new RuntimeException("User not found: " + currentUsername));
@@ -75,5 +77,49 @@ public class PostController {
         );
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/feed")
+    public ResponseEntity<PageResponse<PostResponse>> getFeed(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Principal principal
+    ) {
+        String currentUsername = principal.getName();
+
+        User currentUser = userRepository.findByUsername(currentUsername)
+                .orElseThrow(() -> new RuntimeException("User not found: " + currentUsername));
+
+        List<Long> followingIds = currentUser.getFollowing().stream()
+                .map(User::getId)
+                .toList();
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        if (followingIds.isEmpty()) {
+            return ResponseEntity.ok(new PageResponse<>(
+                    List.of(), pageable.getPageNumber(), pageable.getPageSize(), 0, 0, true
+            ));
+        }
+
+        Page<Post> postsPage = postRepository.findFeedByAuthorIds(followingIds, pageable);
+
+        List<PostResponse> posts = postsPage.getContent().stream()
+                .map(post -> new PostResponse(
+                        post.getId(),
+                        post.getContent(),
+                        post.getAuthor().getUsername(),
+                        post.getCreatedAt()
+                ))
+                .toList();
+
+        return ResponseEntity.ok(new PageResponse<>(
+                posts,
+                postsPage.getNumber(),
+                postsPage.getSize(),
+                postsPage.getTotalElements(),
+                postsPage.getTotalPages(),
+                postsPage.isLast()
+        ));
     }
 }
