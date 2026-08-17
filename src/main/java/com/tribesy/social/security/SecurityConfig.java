@@ -24,7 +24,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/v1/auth/**",
-                                "/ws-chat/**",
+                                "/ws/**",
                                 "/uploads/**",
                                 "/error"
                         ).permitAll()

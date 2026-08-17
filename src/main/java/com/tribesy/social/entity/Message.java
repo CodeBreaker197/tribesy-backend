@@ -2,6 +2,8 @@ package com.tribesy.social.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+
 import java.time.LocalDateTime;
 
 @Entity
@@ -17,15 +19,19 @@ public class Message {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String sender;
+    @Column(name = "chat_id", nullable = false)
+    private Long chatId;
 
-    @Column(nullable = false)
-    private String recipient;
+    @Column(name = "sender_id", nullable = false)
+    private Long senderId;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    @Column(name = "created_at", nullable = false)
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "is_read")
+    private Boolean isRead = false;
 }

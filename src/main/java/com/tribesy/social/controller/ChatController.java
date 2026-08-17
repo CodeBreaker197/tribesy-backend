@@ -1,49 +1,26 @@
 package com.tribesy.social.controller;
 
 import com.tribesy.social.dto.ChatMessage;
-import com.tribesy.social.entity.Message;
-import com.tribesy.social.repository.MessageRepository;
+import com.tribesy.social.service.MessageService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.handler.annotation.SendTo;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
-
 import java.security.Principal;
-import java.time.LocalDateTime;
 
+@Slf4j
 @Controller
 @RequiredArgsConstructor
 public class ChatController {
 
-    private final MessageRepository messageRepository;
-    private final SimpMessagingTemplate messagingTemplate;
+    private final MessageService messageService;
 
     @MessageMapping("/chat.sendMessage")
     public void sendMessage(@Payload ChatMessage chatMessage, Principal principal) {
-        String sender = principal.getName();
-        chatMessage.setSender(sender);
+        log.info("WS Message received: {}, from user: {}", chatMessage.getContent(),
+                principal != null ? principal.getName() : "NULL");
 
-        if (chatMessage.getType() == ChatMessage.MessageType.CHAT) {
-            Message message = Message.builder()
-                    .sender(sender)
-                    .recipient(chatMessage.getRecipient())
-                    .content(chatMessage.getContent())
-                    .createdAt(LocalDateTime.now())
-                    .build();
-
-            messageRepository.save(message);
-
-            if (chatMessage.getRecipient() != null && !chatMessage.getRecipient().equals("ALL")) {
-                messagingTemplate.convertAndSendToUser(
-                        chatMessage.getRecipient(),
-                        "/queue/messages",
-                        chatMessage
-                );
-            } else {
-                messagingTemplate.convertAndSend("/topic/public", chatMessage);
-            }
-        }
+        messageService.processAndSendMessage(chatMessage, principal);
     }
 }

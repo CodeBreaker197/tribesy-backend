@@ -1,11 +1,10 @@
 package com.tribesy.social.controller;
 
 import com.tribesy.social.entity.Message;
-import com.tribesy.social.repository.MessageRepository;
+import com.tribesy.social.service.MessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.security.Principal;
 import java.util.List;
 
 @RestController
@@ -13,11 +12,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class MessageController {
 
-    private final MessageRepository messageRepository;
+    private final MessageService messageService;
 
-    @GetMapping("/history")
-    public List<Message> getChatHistory(@RequestParam String withUser, Principal principal) {
-        String currentUsername = principal.getName();
-        return messageRepository.findChatHistory(currentUsername, withUser);
+    @GetMapping("/history/{chatId}")
+    public List<Message> getChatHistory(@PathVariable Long chatId) {
+        return messageService.getChatHistory(chatId);
     }
 }
