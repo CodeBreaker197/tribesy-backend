@@ -378,7 +378,3 @@ This project is a **portfolio backend project for demonstrating practical Java b
 It focuses on writing a structured Spring application with authentication, relational data modeling, REST APIs, transactions and real-time communication rather than implementing a simple CRUD example.
 
 ---
-
-<p align="center">
-  <sub>Built with Java ❤️ and Spring Boot</sub>
-</p>
